@@ -1,1 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="ScholarHub — a tertiary academic materials platform." />
+  <title>ScholarHub | Academic Materials</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand"><div class="brand-mark">S</div><div><strong>ScholarHub</strong><span>Academic Portal</span></div></div>
+      <nav class="nav-list" aria-label="Main navigation">
+        <button class="nav-item active" data-section="home">🏠 <span>Home</span></button>
+        <button class="nav-item" data-section="profile">🧞 <span>My Profile</span></button>
+        <button class="nav-item" data-section="year">🕓 <span>Year of Study</span></button>
+        <button class="nav-item" data-section="units">📕 <span>Units</span></button>
+        <button class="nav-item" data-section="combination">📑 <span>Course Combination</span></button>
+        <button class="nav-item" data-section="packages">🧱 <span>Packages</span></button>
+        <button class="nav-item" data-section="settings">⚙ <span>Settings</span></button>
+      </nav>
+      <div class="sidebar-footer"><span class="status-dot"></span> Learning made simpler</div>
+    </aside>
 
+    <main class="main-content">
+      <header class="topbar">
+        <button class="mobile-menu" id="menuBtn" aria-label="Open navigation">☰</button>
+        <div><p class="eyebrow">TERTIARY ACADEMICS</p><h1 id="pageTitle">Welcome back 👋</h1></div>
+        <div class="top-actions"><button class="icon-btn" id="notificationBtn" aria-label="Notifications">🔔<span class="badge">3</span></button><div class="avatar">BK</div></div>
+      </header>
+
+      <section class="content" id="app">
+        <div class="hero-card">
+          <div><p class="eyebrow light">YOUR ACADEMIC SPACE</p><h2>Welcome to ScholarHub</h2><p>Access your units, revision materials and academic updates from one place.</p><button class="primary-btn" data-section="units">Explore my units →</button></div>
+          <div class="hero-icon">🎓</div>
+        </div>
+
+        <div class="profile-strip">
+          <div class="profile-avatar">BK</div><div class="profile-copy"><span>Student profile</span><strong>Student Name</strong><small>Bachelor of Education • Year 2</small></div><button class="outline-btn" data-section="profile">View profile</button>
+        </div>
+
+        <div class="section-heading"><div><p class="eyebrow">OVERVIEW</p><h2>Your academic dashboard</h2></div></div>
+        <div class="stats-grid">
+          <article class="stat-card"><span class="stat-icon">📚</span><div><small>My Units</small><strong>8</strong></div></article>
+          <article class="stat-card"><span class="stat-icon">📑</span><div><small>Combination</small><strong>Math / Chem</strong></div></article>
+          <article class="stat-card"><span class="stat-icon">🕓</span><div><small>Year of Study</small><strong>Year 2</strong></div></article>
+          <article class="stat-card"><span class="stat-icon">🔓</span><div><small>Access</small><strong>Free plan</strong></div></article>
+        </div>
+
+        <div class="two-column">
+          <section class="panel"><div class="panel-heading"><div><p class="eyebrow">LATEST</p><h3>New academic materials</h3></div><button class="text-btn" data-section="units">View all</button></div>
+            <div class="material-list">
+              <article class="material"><div class="file-icon">📄</div><div class="material-info"><strong>Mathematics Revision Questions</strong><span>Mathematics • Updated today</span></div><button class="download-btn">Download</button></article>
+              <article class="material"><div class="file-icon">📄</div><div class="material-info"><strong>Chemistry End Semester Notes</strong><span>Chemistry • Updated yesterday</span></div><button class="download-btn">Download</button></article>
+              <article class="material locked"><div class="file-icon">🔒</div><div class="material-info"><strong>Educational Psychology Papers</strong><span>Premium material</span></div><button class="download-btn premium" data-section="packages">Unlock</button></article>
+            </div>
+          </section>
+
+          <section class="panel notification-panel"><div class="panel-heading"><div><p class="eyebrow">UPDATES</p><h3>Notifications</h3></div><span class="notification-count">3 new</span></div>
+            <div class="notification"><span>📢</span><div><strong>New revision materials</strong><p>New Year 2 materials are now available.</p><small>2 hours ago</small></div></div>
+            <div class="notification"><span>🎓</span><div><strong>Academic notice</strong><p>Check your unit materials before exams.</p><small>Yesterday</small></div></div>
+            <div class="notification"><span>💡</span><div><strong>ScholarHub tip</strong><p>Keep your profile information up to date.</p><small>2 days ago</small></div></div>
+          </section>
+        </div>
+      </section>
+    </main>
+  </div>
+  <div class="toast" id="toast" role="status"></div>
+  <script src="/js/app.js"></script>
+</body>
+</html>
