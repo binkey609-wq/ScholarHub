@@ -107,7 +107,14 @@ async function renderSection(section) {
     let materials=[]; try { materials=await loadMaterials(); } catch(e) { showToast(e.message); }
     shell(titles.units,`<div class="section-heading"><p class="eyebrow">LEARNING RESOURCES</p><h2>Units & lecture materials</h2></div><section class="panel"><p>Latest lecture notes and revision resources published by the ScholarHub administrator.</p><div class="material-list">${materials.length?materials.map(materialCard).join(''):'<p>No materials are available yet.</p>'}</div></section>`);
   } else if (section === 'combination') {
-    shell(titles.combination,`<div class="section-heading"><p class="eyebrow">YOUR PROGRAMME</p><h2>Course Combination</h2></div><section class="panel"><h3>${esc(profile?.combination_name||'No combination selected')}</h3><p>Course: ${esc(profile?.course_name||user?.user_metadata?.course||'Not set')}</p><p>Combination details will appear here once configured by the administrator.</p></section>`);
+    const courseName = profile?.course_name || user?.user_metadata?.course || 'Not set';
+    const normalizedCourse = String(courseName).toLowerCase().replace(/\\s+/g, ' ').trim();
+    const isEducationScience = normalizedCourse.includes('bachelor of education science') || normalizedCourse === 'education science';
+    const educationScienceCombinations = ['Math/Chem', 'Math/Physics', 'Math/Bio', 'Bio/Chem', 'Chem/Physics'];
+    const combinationContent = isEducationScience
+      ? `<p>Select from the available combinations for Bachelor of Education Science:</p><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:18px">${educationScienceCombinations.map((combination,index)=>'<article class="stat-card" style="display:flex;align-items:center;gap:12px"><span class="stat-icon">📘</span><div><small>Combination '+(index+1)+'</small><strong>'+combination+'</strong></div></article>').join('')}</div>`
+      : '<p>Combination options will be shown here according to your enrolled course.</p>';
+    shell(titles.combination,`<div class="section-heading"><p class="eyebrow">YOUR PROGRAMME</p><h2>Course Combination</h2></div><section class="panel"><h3>${esc(profile?.combination_name||'Available combinations')}</h3><p>Course: ${esc(courseName)}</p>${combinationContent}</section>`);
   } else if (section === 'packages') {
     renderPackages();
   } else if (section === 'settings') {
