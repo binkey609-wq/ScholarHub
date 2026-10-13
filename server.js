@@ -123,6 +123,21 @@ app.get('/api/notifications', authenticate, async (req, res) => {
   return res.json({ notifications: data || [] });
 });
 
+app.delete('/api/admin/materials/:id', authenticate, requireAdmin, async (req, res) => {
+  const client = req.userSupabase;
+  const { data: material, error: findError } = await client
+    .from('materials').select('id,file_path').eq('id', req.params.id).maybeSingle();
+  if (findError) return res.status(500).json({ error: 'Could not find the material record.' });
+  if (!material) return res.status(404).json({ error: 'This material has already been deleted.' });
+
+  const { error: deleteError } = await client.from('materials').delete().eq('id', material.id);
+  if (deleteError) return res.status(400).json({ error: 'Could not delete the material record: ' + deleteError.message });
+
+  const { error: storageError } = await client.storage.from('materials').remove([material.file_path]);
+  if (storageError) return res.status(500).json({ error: 'The material record was deleted, but its stored file could not be removed. Storage cleanup may be needed.' });
+  return res.json({ message: 'Material and stored file deleted successfully.' });
+});
+
 app.post('/api/admin/notifications', authenticate, requireAdmin, async (req, res) => {
   const title = String(req.body.title || '').trim();
   const message = String(req.body.message || '').trim();
