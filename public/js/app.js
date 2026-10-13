@@ -81,6 +81,20 @@ async function loadHomeNotifications() {
     if (badge) { badge.textContent = items.length; badge.style.display = items.length ? 'grid' : 'none'; }
   } catch (error) { preview.innerHTML = '<p>Notifications could not be loaded.</p>'; }
 }
+const packageOptions = [
+  {id:'daily',name:'Daily',duration:'24-hour access',price:'KSh 50',detail:'Great for a quick study session',icon:'☀️',className:'package-daily'},
+  {id:'weekly',name:'Weekly',duration:'7-day access',price:'KSh 250',detail:'A full week of focused learning',icon:'🚀',className:'package-weekly'},
+  {id:'monthly',name:'Monthly',duration:'30-day access',price:'KSh 700',detail:'Best for ongoing coursework',icon:'🎓',className:'package-monthly',popular:true},
+  {id:'yearly',name:'Yearly',duration:'365-day access',price:'KSh 5,000',detail:'Your all-year academic companion',icon:'🏆',className:'package-yearly'}
+];
+function renderPackages() {
+  shell(titles.packages,`<div class="section-heading"><p class="eyebrow">UNLOCK YOUR POTENTIAL</p><h2>Choose your learning pass</h2><p>Get access to premium academic materials with a package that suits your study plan.</p></div><div class="package-grid">${packageOptions.map(p=>'<button type="button" class="package-card '+p.className+'" data-package="'+p.id+'">'+(p.popular?'<span class="package-popular">MOST POPULAR</span>':'')+'<span class="package-icon">'+p.icon+'</span><strong class="package-name">'+p.name+'</strong><span class="package-duration">'+p.duration+'</span><strong class="package-price">'+p.price+'</strong><span class="package-detail">'+p.detail+'</span><span class="package-cta">Choose package →</span></button>').join('')}</div><p class="package-footnote">Select a package to continue to available payment methods. Payment processing is not connected yet.</p>`);
+}
+function renderPaymentMethods(packageId) {
+  const p=packageOptions.find(item=>item.id===packageId);
+  if(!p) return renderPackages();
+  shell('Payment methods',`<div class="section-heading"><p class="eyebrow">SECURE CHECKOUT</p><h2>Choose a payment method</h2><p>You're selecting the <strong>${p.name}</strong> package.</p></div><section class="checkout-summary"><div><span>Selected package</span><strong>${p.name} · ${p.duration}</strong></div><strong class="checkout-price">${p.price}</strong></section><div class="payment-method-grid"><article class="payment-method"><span class="payment-icon">📱</span><div><strong>M-Pesa</strong><p>Pay securely using your M-Pesa mobile money account.</p></div><span class="payment-status">Coming soon</span></article><article class="payment-method"><span class="payment-icon">💳</span><div><strong>Bank card</strong><p>Visa or Mastercard payment option.</p></div><span class="payment-status">Coming soon</span></article></div><p class="payment-note">This is the payment-method selection step only. No money will be charged and your package will not activate until a payment provider is connected.</p><button type="button" class="outline-btn" data-back-packages>← Back to packages</button>`);
+}
 async function renderSection(section) {
   document.querySelectorAll('.nav-item').forEach(item => item.classList.toggle('active', item.dataset.section === section));
   if (section === 'home') return renderHome();
@@ -95,7 +109,7 @@ async function renderSection(section) {
   } else if (section === 'combination') {
     shell(titles.combination,`<div class="section-heading"><p class="eyebrow">YOUR PROGRAMME</p><h2>Course Combination</h2></div><section class="panel"><h3>${esc(profile?.combination_name||'No combination selected')}</h3><p>Course: ${esc(profile?.course_name||user?.user_metadata?.course||'Not set')}</p><p>Combination details will appear here once configured by the administrator.</p></section>`);
   } else if (section === 'packages') {
-    shell(titles.packages,`<div class="section-heading"><p class="eyebrow">PREMIUM ACCESS</p><h2>Choose a package</h2></div><div class="stats-grid"><article class="panel"><h3>Daily</h3><p>24-hour access</p><strong>KSh 50</strong></article><article class="panel"><h3>Weekly</h3><p>7-day access</p><strong>KSh 250</strong></article><article class="panel"><h3>Monthly</h3><p>30-day access</p><strong>KSh 700</strong></article><article class="panel"><h3>Yearly</h3><p>365-day access</p><strong>KSh 5,000</strong></article></div><p style="margin-top:18px">Payment and automatic subscription activation are not enabled yet.</p>`);
+    renderPackages();
   } else if (section === 'settings') {
     shell(titles.settings,`<div class="section-heading"><p class="eyebrow">PREFERENCES</p><h2>Settings</h2></div><section class="panel settings-panel"><h3>Appearance</h3><div class="setting-row"><div><strong>Day / night mode</strong><p>Choose light or dark appearance.</p></div><button class="outline-btn" id="themeToggle" type="button">${document.body.classList.contains('dark-mode')?'Switch to day mode':'Switch to night mode'}</button></div><div class="setting-row"><div><strong>Compact layout</strong><p>Reduce spacing to fit more content on screen.</p></div><button class="outline-btn" id="compactToggle" type="button">${document.body.classList.contains('compact-mode')?'Turn off compact layout':'Turn on compact layout'}</button></div><div class="setting-row"><div><strong>Account</strong><p>${esc(user?.email||'')}</p></div><button class="outline-btn" id="settingsLogout" type="button">Log out</button></div><p style="font-size:12px;color:#718096">Your appearance preferences are saved on this device.</p></section>`);
     document.getElementById('themeToggle')?.addEventListener('click',()=>{const dark=!document.body.classList.contains('dark-mode');localStorage.setItem(themeKey,dark?'dark':'light');applyPreferences();renderSection('settings');});
@@ -119,7 +133,14 @@ async function init() {
   await renderHome();
   await loadHomeNotifications();
 }
-document.addEventListener('click', event => { const target = event.target.closest('[data-section]'); if (target) { event.preventDefault(); renderSection(target.dataset.section); return; } if (event.target.closest('[data-show-notifications]')) renderNotifications(); });
+document.addEventListener('click', event => {
+  const target = event.target.closest('[data-section]');
+  if (target) { event.preventDefault(); renderSection(target.dataset.section); return; }
+  if (event.target.closest('[data-show-notifications]')) { renderNotifications(); return; }
+  const packageButton = event.target.closest('[data-package]');
+  if (packageButton) { renderPaymentMethods(packageButton.dataset.package); return; }
+  if (event.target.closest('[data-back-packages]')) renderPackages();
+});
 appRoot.addEventListener('click', async event => {
   const openButton = event.target.closest('[data-open-material]');
   if (!openButton) return;
