@@ -35,7 +35,7 @@ function shell(title, body) {
   sidebar?.classList.remove('open');
 }
 function materialCard(item) {
-  return '<article class="material"><div class="file-icon">📄</div><div class="material-info"><strong>'+esc(item.title)+'</strong><span>'+esc(item.description || 'Academic material')+' · '+new Date(item.created_at).toLocaleDateString()+'</span></div><span class="notification-count">'+(item.is_paid?'Premium':'Available')+'</span></article>';
+  return '<article class="material"><div class="file-icon">📄</div><div class="material-info"><strong>'+esc(item.title)+'</strong><span>'+esc(item.description || 'Academic material')+' · '+new Date(item.created_at).toLocaleDateString()+'</span></div><span class="notification-count">'+(item.is_paid?'Premium':'Free')+'</span><button type="button" class="download-btn'+(item.is_paid?' premium':'')+'" data-open-material="'+esc(item.id)+'">'+(item.is_paid?'Open / Unlock':'Open file')+'</button></article>';
 }
 async function loadMaterials() {
   const data = await api('/api/materials');
@@ -92,7 +92,27 @@ async function init() {
   } catch(e) { showToast(e.message); }
   await renderHome();
 }
-appRoot.addEventListener('click', event => { const target = event.target.closest('[data-section]'); if (target && appRoot.contains(target)) renderSection(target.dataset.section); });
+document.addEventListener('click', event => { const target = event.target.closest('[data-section]'); if (target) { event.preventDefault(); renderSection(target.dataset.section); } });
+appRoot.addEventListener('click', async event => {
+  const openButton = event.target.closest('[data-open-material]');
+  if (!openButton) return;
+  const newTab = window.open('about:blank', '_blank');
+  if (newTab) newTab.document.write('<p style="font-family:system-ui;padding:2rem">Opening your academic material…</p>');
+  openButton.disabled = true;
+  const oldLabel = openButton.textContent;
+  openButton.textContent = 'Opening…';
+  try {
+    const result = await api('/api/materials/' + encodeURIComponent(openButton.dataset.openMaterial) + '/open');
+    if (newTab) newTab.location.href = result.url;
+    else window.location.href = result.url;
+  } catch (error) {
+    if (newTab) newTab.close();
+    showToast(error.message);
+  } finally {
+    openButton.disabled = false;
+    openButton.textContent = oldLabel;
+  }
+});
 document.getElementById('notificationBtn')?.addEventListener('click',()=>showToast('Notifications will appear here when published by the administrator.'));
 document.getElementById('menuBtn')?.addEventListener('click',()=>sidebar?.classList.toggle('open'));
 document.getElementById('logoutBtn')?.addEventListener('click',logout);
