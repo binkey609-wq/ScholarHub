@@ -1,16 +1,14 @@
 {
   "name": "scholarhub",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
   "description": "Tertiary academic materials platform",
   "main": "server.js",
-  "scripts": {
-    "start": "node server.js",
-    "dev": "node --watch server.js"
-  },
+  "scripts": { "start": "node server.js", "dev": "node --watch server.js" },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.0",
     "dotenv": "^16.4.7",
-    "express": "^4.21.2"
+    "express": "^4.21.2",
+    "multer": "^2.0.2"
   }
 }
