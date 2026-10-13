@@ -117,6 +117,225 @@ create trigger on_auth_user_created
 after insert on auth.users
 for each row execute procedure public.handle_new_user();
 
+-- Backfill accounts created before this trigger was installed.
+insert into public.profiles (id, full_name, email, course_name, year_of_study, role)
+select
+  u.id,
+  coalesce(nullif(u.raw_user_meta_data ->> 'full_name', ''), lower(coalesce(u.email, '')), 'Student'),
+  lower(coalesce(u.email, '')),
+  nullif(u.raw_user_meta_data ->> 'course', ''),
+  case
+    when coalesce(u.raw_user_meta_data ->> 'year_of_study', '') ~ '^[0-9]+
+create or replace function public.is_scholarhub_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select lower(coalesce(auth.jwt() ->> 'email', '')) = 'ebeitimothy19@gmail.com'
+$$;
+
+alter table public.profiles enable row level security;
+alter table public.courses enable row level security;
+alter table public.combinations enable row level security;
+alter table public.units enable row level security;
+alter table public.combination_units enable row level security;
+alter table public.materials enable row level security;
+alter table public.packages enable row level security;
+alter table public.subscriptions enable row level security;
+alter table public.notifications enable row level security;
+
+drop policy if exists "Users read own profile" on public.profiles;
+create policy "Users read own profile" on public.profiles for select to authenticated
+using (id = auth.uid() or public.is_scholarhub_admin());
+drop policy if exists "Users update own student profile" on public.profiles;
+create policy "Users update own student profile" on public.profiles for update to authenticated
+using (id = auth.uid() and role = 'student')
+with check (id = auth.uid() and role = 'student');
+drop policy if exists "Admin manages profiles" on public.profiles;
+create policy "Admin manages profiles" on public.profiles for all to authenticated
+using (public.is_scholarhub_admin()) with check (public.is_scholarhub_admin());
+
+drop policy if exists "Authenticated read courses" on public.courses;
+create policy "Authenticated read courses" on public.courses for select to authenticated using (true);
+drop policy if exists "Admin manages courses" on public.courses;
+create policy "Admin manages courses" on public.courses for all to authenticated using (public.is_scholarhub_admin()) with check (public.is_scholarhub_admin());
+
+drop policy if exists "Authenticated read combinations" on public.combinations;
+create policy "Authenticated read combinations" on public.combinations for select to authenticated using (true);
+drop policy if exists "Admin manages combinations" on public.combinations;
+create policy "Admin manages combinations" on public.combinations for all to authenticated using (public.is_scholarhub_admin()) with check (public.is_scholarhub_admin());
+
+drop policy if exists "Authenticated read units" on public.units;
+create policy "Authenticated read units" on public.units for select to authenticated using (true);
+drop policy if exists "Admin manages units" on public.units;
+create policy "Admin manages units" on public.units for all to authenticated using (public.is_scholarhub_admin()) with check (public.is_scholarhub_admin());
+
+drop policy if exists "Authenticated read combination units" on public.combination_units;
+create policy "Authenticated read combination units" on public.combination_units for select to authenticated using (true);
+drop policy if exists "Admin manages combination units" on public.combination_units;
+create policy "Admin manages combination units" on public.combination_units for all to authenticated using (public.is_scholarhub_admin()) with check (public.is_scholarhub_admin());
+
+drop policy if exists "Authenticated read materials" on public.materials;
+create policy "Authenticated read materials" on public.materials for select to authenticated using (true);
+drop policy if exists "Admin manages materials" on public.materials;
+create policy "Admin manages materials" on public.materials for all to authenticated using (public.is_scholarhub_admin()) with check (public.is_scholarhub_admin());
+
+drop policy if exists "Authenticated read packages" on public.packages;
+create policy "Authenticated read packages" on public.packages for select to authenticated using (true);
+drop policy if exists "Admin manages packages" on public.packages;
+create policy "Admin manages packages" on public.packages for all to authenticated using (public.is_scholarhub_admin()) with check (public.is_scholarhub_admin());
+
+drop policy if exists "Users read own subscriptions" on public.subscriptions;
+create policy "Users read own subscriptions" on public.subscriptions for select to authenticated using (user_id = auth.uid() or public.is_scholarhub_admin());
+drop policy if exists "Admin manages subscriptions" on public.subscriptions;
+create policy "Admin manages subscriptions" on public.subscriptions for all to authenticated using (public.is_scholarhub_admin()) with check (public.is_scholarhub_admin());
+
+drop policy if exists "Authenticated read notifications" on public.notifications;
+create policy "Authenticated read notifications" on public.notifications for select to authenticated using (true);
+drop policy if exists "Admin manages notifications" on public.notifications;
+create policy "Admin manages notifications" on public.notifications for all to authenticated using (public.is_scholarhub_admin()) with check (public.is_scholarhub_admin());
+
+-- Private bucket for lecture notes and revision materials.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('materials', 'materials', false, 20971520,
+  array['application/pdf','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/vnd.ms-powerpoint','application/vnd.openxmlformats-officedocument.presentationml.presentation','text/plain','image/jpeg','image/png'])
+on conflict (id) do update set public = false, file_size_limit = 20971520, allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists "Admin uploads materials" on storage.objects;
+create policy "Admin uploads materials" on storage.objects for insert to authenticated
+with check (bucket_id = 'materials' and public.is_scholarhub_admin());
+drop policy if exists "Admin updates materials files" on storage.objects;
+create policy "Admin updates materials files" on storage.objects for update to authenticated
+using (bucket_id = 'materials' and public.is_scholarhub_admin())
+with check (bucket_id = 'materials' and public.is_scholarhub_admin());
+drop policy if exists "Admin deletes materials files" on storage.objects;
+create policy "Admin deletes materials files" on storage.objects for delete to authenticated
+using (bucket_id = 'materials' and public.is_scholarhub_admin());
+drop policy if exists "Authenticated read materials files" on storage.objects;
+create policy "Authenticated read materials files" on storage.objects for select to authenticated
+using (bucket_id = 'materials');
+
+insert into public.packages (name, duration_days, price, description) values
+  ('Daily', 1, 50, '24-hour access to premium materials'),
+  ('Weekly', 7, 250, '7-day access to premium materials'),
+  ('Monthly', 30, 700, '30-day access to premium materials'),
+  ('Yearly', 365, 5000, '365-day access to premium materials')
+on conflict (name) do nothing;
+
+      then (u.raw_user_meta_data ->> 'year_of_study')::integer
+    when coalesce(u.raw_user_meta_data ->> 'year_of_study', '') ~* '^year [0-9]+
+create or replace function public.is_scholarhub_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select lower(coalesce(auth.jwt() ->> 'email', '')) = 'ebeitimothy19@gmail.com'
+$$;
+
+alter table public.profiles enable row level security;
+alter table public.courses enable row level security;
+alter table public.combinations enable row level security;
+alter table public.units enable row level security;
+alter table public.combination_units enable row level security;
+alter table public.materials enable row level security;
+alter table public.packages enable row level security;
+alter table public.subscriptions enable row level security;
+alter table public.notifications enable row level security;
+
+drop policy if exists "Users read own profile" on public.profiles;
+create policy "Users read own profile" on public.profiles for select to authenticated
+using (id = auth.uid() or public.is_scholarhub_admin());
+drop policy if exists "Users update own student profile" on public.profiles;
+create policy "Users update own student profile" on public.profiles for update to authenticated
+using (id = auth.uid() and role = 'student')
+with check (id = auth.uid() and role = 'student');
+drop policy if exists "Admin manages profiles" on public.profiles;
+create policy "Admin manages profiles" on public.profiles for all to authenticated
+using (public.is_scholarhub_admin()) with check (public.is_scholarhub_admin());
+
+drop policy if exists "Authenticated read courses" on public.courses;
+create policy "Authenticated read courses" on public.courses for select to authenticated using (true);
+drop policy if exists "Admin manages courses" on public.courses;
+create policy "Admin manages courses" on public.courses for all to authenticated using (public.is_scholarhub_admin()) with check (public.is_scholarhub_admin());
+
+drop policy if exists "Authenticated read combinations" on public.combinations;
+create policy "Authenticated read combinations" on public.combinations for select to authenticated using (true);
+drop policy if exists "Admin manages combinations" on public.combinations;
+create policy "Admin manages combinations" on public.combinations for all to authenticated using (public.is_scholarhub_admin()) with check (public.is_scholarhub_admin());
+
+drop policy if exists "Authenticated read units" on public.units;
+create policy "Authenticated read units" on public.units for select to authenticated using (true);
+drop policy if exists "Admin manages units" on public.units;
+create policy "Admin manages units" on public.units for all to authenticated using (public.is_scholarhub_admin()) with check (public.is_scholarhub_admin());
+
+drop policy if exists "Authenticated read combination units" on public.combination_units;
+create policy "Authenticated read combination units" on public.combination_units for select to authenticated using (true);
+drop policy if exists "Admin manages combination units" on public.combination_units;
+create policy "Admin manages combination units" on public.combination_units for all to authenticated using (public.is_scholarhub_admin()) with check (public.is_scholarhub_admin());
+
+drop policy if exists "Authenticated read materials" on public.materials;
+create policy "Authenticated read materials" on public.materials for select to authenticated using (true);
+drop policy if exists "Admin manages materials" on public.materials;
+create policy "Admin manages materials" on public.materials for all to authenticated using (public.is_scholarhub_admin()) with check (public.is_scholarhub_admin());
+
+drop policy if exists "Authenticated read packages" on public.packages;
+create policy "Authenticated read packages" on public.packages for select to authenticated using (true);
+drop policy if exists "Admin manages packages" on public.packages;
+create policy "Admin manages packages" on public.packages for all to authenticated using (public.is_scholarhub_admin()) with check (public.is_scholarhub_admin());
+
+drop policy if exists "Users read own subscriptions" on public.subscriptions;
+create policy "Users read own subscriptions" on public.subscriptions for select to authenticated using (user_id = auth.uid() or public.is_scholarhub_admin());
+drop policy if exists "Admin manages subscriptions" on public.subscriptions;
+create policy "Admin manages subscriptions" on public.subscriptions for all to authenticated using (public.is_scholarhub_admin()) with check (public.is_scholarhub_admin());
+
+drop policy if exists "Authenticated read notifications" on public.notifications;
+create policy "Authenticated read notifications" on public.notifications for select to authenticated using (true);
+drop policy if exists "Admin manages notifications" on public.notifications;
+create policy "Admin manages notifications" on public.notifications for all to authenticated using (public.is_scholarhub_admin()) with check (public.is_scholarhub_admin());
+
+-- Private bucket for lecture notes and revision materials.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('materials', 'materials', false, 20971520,
+  array['application/pdf','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/vnd.ms-powerpoint','application/vnd.openxmlformats-officedocument.presentationml.presentation','text/plain','image/jpeg','image/png'])
+on conflict (id) do update set public = false, file_size_limit = 20971520, allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists "Admin uploads materials" on storage.objects;
+create policy "Admin uploads materials" on storage.objects for insert to authenticated
+with check (bucket_id = 'materials' and public.is_scholarhub_admin());
+drop policy if exists "Admin updates materials files" on storage.objects;
+create policy "Admin updates materials files" on storage.objects for update to authenticated
+using (bucket_id = 'materials' and public.is_scholarhub_admin())
+with check (bucket_id = 'materials' and public.is_scholarhub_admin());
+drop policy if exists "Admin deletes materials files" on storage.objects;
+create policy "Admin deletes materials files" on storage.objects for delete to authenticated
+using (bucket_id = 'materials' and public.is_scholarhub_admin());
+drop policy if exists "Authenticated read materials files" on storage.objects;
+create policy "Authenticated read materials files" on storage.objects for select to authenticated
+using (bucket_id = 'materials');
+
+insert into public.packages (name, duration_days, price, description) values
+  ('Daily', 1, 50, '24-hour access to premium materials'),
+  ('Weekly', 7, 250, '7-day access to premium materials'),
+  ('Monthly', 30, 700, '30-day access to premium materials'),
+  ('Yearly', 365, 5000, '365-day access to premium materials')
+on conflict (name) do nothing;
+
+      then substring(u.raw_user_meta_data ->> 'year_of_study' from '[0-9]+')::integer
+    else null
+  end,
+  case when lower(coalesce(u.email, '')) = 'ebeitimothy19@gmail.com' then 'admin' else 'student' end
+from auth.users u
+on conflict (id) do update set
+  email = excluded.email,
+  full_name = coalesce(nullif(public.profiles.full_name, ''), excluded.full_name),
+  course_name = coalesce(public.profiles.course_name, excluded.course_name),
+  year_of_study = coalesce(public.profiles.year_of_study, excluded.year_of_study),
+  role = case when excluded.email = 'ebeitimothy19@gmail.com' then 'admin' else public.profiles.role end;
+
 create or replace function public.is_scholarhub_admin()
 returns boolean
 language sql
