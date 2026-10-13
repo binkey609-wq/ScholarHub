@@ -84,6 +84,35 @@ app.get('/api/materials', authenticate, async (req, res) => {
   if (error) return res.status(500).json({ error: 'Could not load materials. Run the latest database schema and policies.' });
   return res.json({ materials: data || [] });
 });
+app.get('/api/materials/:id/open', authenticate, async (req, res) => {
+  const { data: material, error } = await req.userSupabase
+    .from('materials')
+    .select('id,title,file_path,is_paid')
+    .eq('id', req.params.id)
+    .maybeSingle();
+  if (error) return res.status(500).json({ error: 'Could not find this material. Please try again.' });
+  if (!material) return res.status(404).json({ error: 'This material is no longer available.' });
+
+  if (material.is_paid) {
+    const { data: subscription, error: subscriptionError } = await req.userSupabase
+      .from('subscriptions')
+      .select('id')
+      .eq('user_id', req.user.id)
+      .eq('status', 'active')
+      .gt('expiry_date', new Date().toISOString())
+      .limit(1)
+      .maybeSingle();
+    if (subscriptionError) return res.status(500).json({ error: 'Could not verify your subscription. Please try again later.' });
+    if (!subscription) return res.status(403).json({ error: 'This is premium material. Please activate a package to open it.' });
+  }
+
+  const { data: signed, error: storageError } = await req.userSupabase.storage
+    .from('materials')
+    .createSignedUrl(material.file_path, 300);
+  if (storageError || !signed?.signedUrl) return res.status(500).json({ error: 'Could not open this file. Ask the administrator to check its upload.' });
+  return res.json({ url: signed.signedUrl, title: material.title });
+});
+
 app.get('/api/admin/summary', authenticate, requireAdmin, async (req, res) => {
   const [profiles, materials, notifications] = await Promise.all([
     req.userSupabase.from('profiles').select('id', { count: 'exact', head: true }),
