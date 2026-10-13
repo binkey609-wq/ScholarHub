@@ -10,6 +10,13 @@ const pageTitle = document.getElementById('pageTitle');
 const appRoot = document.getElementById('app');
 const titles = {home:'Welcome back 👋',profile:'My Profile',year:'Year of Study',units:'My Units',combination:'Course Combination',packages:'Packages',settings:'Settings'};
 let profile = null;
+const themeKey = 'scholarhub_theme';
+const compactKey = 'scholarhub_compact';
+function applyPreferences() {
+  document.body.classList.toggle('dark-mode', localStorage.getItem(themeKey) === 'dark');
+  document.body.classList.toggle('compact-mode', localStorage.getItem(compactKey) === 'yes');
+}
+applyPreferences();
 
 function showToast(message) {
   if (!toast) return;
@@ -54,7 +61,25 @@ async function renderHome() {
     <div class="section-heading"><div><p class="eyebrow">OVERVIEW</p><h2>Your academic dashboard</h2></div></div>
     <div class="stats-grid"><article class="stat-card"><span class="stat-icon">📚</span><div><small>My Units</small><strong>Browse units</strong></div></article><article class="stat-card"><span class="stat-icon">📑</span><div><small>Combination</small><strong>${esc(combo)}</strong></div></article><article class="stat-card"><span class="stat-icon">🕓</span><div><small>Year of Study</small><strong>${esc(year)}</strong></div></article><article class="stat-card"><span class="stat-icon">🔐</span><div><small>Account</small><strong>Signed in</strong></div></article></div>
     <div class="two-column"><section class="panel"><div class="panel-heading"><div><p class="eyebrow">LATEST</p><h3>Academic materials</h3></div><button class="text-btn" data-section="units">View all</button></div><div class="material-list">${materials.length?materials.slice(0,4).map(materialCard).join(''):'<p>No materials uploaded yet. Check back soon.</p>'}</div></section>
-    <section class="panel"><div class="panel-heading"><div><p class="eyebrow">UPDATES</p><h3>Notifications</h3></div></div><p>Your academic notices will appear here when notifications are connected.</p></section></div>`);
+    <section class="panel"><div class="panel-heading"><div><p class="eyebrow">UPDATES</p><h3>Notifications</h3></div><button class="text-btn" data-show-notifications>View all</button></div><div class="notification-preview"><p>Loading notices…</p></div></section></div>`);
+}
+async function renderNotifications() {
+  try {
+    const result = await api('/api/notifications');
+    const items = result.notifications || [];
+    shell('Notifications', `<div class="section-heading"><p class="eyebrow">STUDENT UPDATES</p><h2>Notifications & announcements</h2></div><section class="panel"><div class="notification-list">${items.length ? items.map(n=>'<article class="notification"><span>📢</span><div><strong>'+esc(n.title)+'</strong><p>'+esc(n.message)+'</p><small>'+new Date(n.created_at).toLocaleString()+'</small></div></article>').join('') : '<p>No notifications yet. New announcements from your administrator will appear here.</p>'}</div></section>`);
+  } catch (error) { showToast(error.message); }
+}
+async function loadHomeNotifications() {
+  const preview = document.querySelector('.notification-preview');
+  if (!preview) return;
+  try {
+    const result = await api('/api/notifications');
+    const items = result.notifications || [];
+    preview.innerHTML = items.length ? items.slice(0,3).map(n=>'<article class="notification"><span>📢</span><div><strong>'+esc(n.title)+'</strong><p>'+esc(n.message)+'</p><small>'+new Date(n.created_at).toLocaleDateString()+'</small></div></article>').join('') : '<p>No new notices yet.</p>';
+    const badge = document.querySelector('#notificationBtn .badge');
+    if (badge) { badge.textContent = items.length; badge.style.display = items.length ? 'grid' : 'none'; }
+  } catch (error) { preview.innerHTML = '<p>Notifications could not be loaded.</p>'; }
 }
 async function renderSection(section) {
   document.querySelectorAll('.nav-item').forEach(item => item.classList.toggle('active', item.dataset.section === section));
@@ -72,8 +97,9 @@ async function renderSection(section) {
   } else if (section === 'packages') {
     shell(titles.packages,`<div class="section-heading"><p class="eyebrow">PREMIUM ACCESS</p><h2>Choose a package</h2></div><div class="stats-grid"><article class="panel"><h3>Daily</h3><p>24-hour access</p><strong>KSh 50</strong></article><article class="panel"><h3>Weekly</h3><p>7-day access</p><strong>KSh 250</strong></article><article class="panel"><h3>Monthly</h3><p>30-day access</p><strong>KSh 700</strong></article><article class="panel"><h3>Yearly</h3><p>365-day access</p><strong>KSh 5,000</strong></article></div><p style="margin-top:18px">Payment and automatic subscription activation are not enabled yet.</p>`);
   } else if (section === 'settings') {
-    shell(titles.settings,`<div class="section-heading"><p class="eyebrow">PREFERENCES</p><h2>Settings</h2></div><section class="panel"><h3>Account</h3><p>${esc(user?.email||'')}</p><button class="outline-btn" id="themeToggle">Toggle day/night mode</button> <button class="outline-btn" id="settingsLogout">Log out</button><p style="font-size:12px;color:#718096">Appearance preference applies to this page only for now.</p></section>`);
-    document.getElementById('themeToggle')?.addEventListener('click',()=>{document.body.classList.toggle('dark-mode');});
+    shell(titles.settings,`<div class="section-heading"><p class="eyebrow">PREFERENCES</p><h2>Settings</h2></div><section class="panel settings-panel"><h3>Appearance</h3><div class="setting-row"><div><strong>Day / night mode</strong><p>Choose light or dark appearance.</p></div><button class="outline-btn" id="themeToggle" type="button">${document.body.classList.contains('dark-mode')?'Switch to day mode':'Switch to night mode'}</button></div><div class="setting-row"><div><strong>Compact layout</strong><p>Reduce spacing to fit more content on screen.</p></div><button class="outline-btn" id="compactToggle" type="button">${document.body.classList.contains('compact-mode')?'Turn off compact layout':'Turn on compact layout'}</button></div><div class="setting-row"><div><strong>Account</strong><p>${esc(user?.email||'')}</p></div><button class="outline-btn" id="settingsLogout" type="button">Log out</button></div><p style="font-size:12px;color:#718096">Your appearance preferences are saved on this device.</p></section>`);
+    document.getElementById('themeToggle')?.addEventListener('click',()=>{const dark=!document.body.classList.contains('dark-mode');localStorage.setItem(themeKey,dark?'dark':'light');applyPreferences();renderSection('settings');});
+    document.getElementById('compactToggle')?.addEventListener('click',()=>{const compact=!document.body.classList.contains('compact-mode');localStorage.setItem(compactKey,compact?'yes':'no');applyPreferences();renderSection('settings');});
     document.getElementById('settingsLogout')?.addEventListener('click',logout);
   }
 }
@@ -91,8 +117,9 @@ async function init() {
     const nameEl=document.querySelector('.profile-copy strong'); if(nameEl) nameEl.textContent=name;
   } catch(e) { showToast(e.message); }
   await renderHome();
+  await loadHomeNotifications();
 }
-document.addEventListener('click', event => { const target = event.target.closest('[data-section]'); if (target) { event.preventDefault(); renderSection(target.dataset.section); } });
+document.addEventListener('click', event => { const target = event.target.closest('[data-section]'); if (target) { event.preventDefault(); renderSection(target.dataset.section); return; } if (event.target.closest('[data-show-notifications]')) renderNotifications(); });
 appRoot.addEventListener('click', async event => {
   const openButton = event.target.closest('[data-open-material]');
   if (!openButton) return;
@@ -113,7 +140,7 @@ appRoot.addEventListener('click', async event => {
     openButton.textContent = oldLabel;
   }
 });
-document.getElementById('notificationBtn')?.addEventListener('click',()=>showToast('Notifications will appear here when published by the administrator.'));
+document.getElementById('notificationBtn')?.addEventListener('click',()=>renderNotifications());
 document.getElementById('menuBtn')?.addEventListener('click',()=>sidebar?.classList.toggle('open'));
 document.getElementById('logoutBtn')?.addEventListener('click',logout);
 init();
