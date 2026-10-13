@@ -225,3 +225,18 @@ insert into public.packages (name, duration_days, price, description) values
   ('Monthly', 30, 700, '30-day access to premium materials'),
   ('Yearly', 365, 5000, '365-day access to premium materials')
 on conflict (name) do nothing;
+
+
+-- Explicit API privileges: RLS policies still decide which rows each user can access.
+grant usage on schema public to authenticated;
+grant select, insert, update, delete on
+  public.courses,
+  public.combinations,
+  public.units,
+  public.combination_units,
+  public.profiles,
+  public.materials,
+  public.packages,
+  public.subscriptions,
+  public.notifications
+to authenticated;
