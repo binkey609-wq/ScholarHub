@@ -76,7 +76,6 @@ async function renderSection(section) {
     document.getElementById('themeToggle')?.addEventListener('click',()=>{document.body.classList.toggle('dark-mode');});
     document.getElementById('settingsLogout')?.addEventListener('click',logout);
   }
-  appRoot.querySelectorAll('[data-section]').forEach(el=>el.addEventListener('click',()=>renderSection(el.dataset.section)));
 }
 async function logout() {
   try { await fetch('/api/auth/logout',{method:'POST'}); } catch {}
@@ -93,7 +92,7 @@ async function init() {
   } catch(e) { showToast(e.message); }
   await renderHome();
 }
-document.querySelectorAll('[data-section]').forEach(el=>el.addEventListener('click',()=>renderSection(el.dataset.section)));
+appRoot.addEventListener('click', event => { const target = event.target.closest('[data-section]'); if (target && appRoot.contains(target)) renderSection(target.dataset.section); });
 document.getElementById('notificationBtn')?.addEventListener('click',()=>showToast('Notifications will appear here when published by the administrator.'));
 document.getElementById('menuBtn')?.addEventListener('click',()=>sidebar?.classList.toggle('open'));
 document.getElementById('logoutBtn')?.addEventListener('click',logout);
