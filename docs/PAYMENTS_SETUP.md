@@ -21,9 +21,10 @@ The hosted-checkout documentation shows:
 - Create a hosted checkout with `POST /v1/hosted-checkout`.
 - The example request includes `requestId`, `amount`, `currency`, `successRedirectUrl`, `errorRedirectUrl`, `webhookUrl`, `orderDetails`, and `deliveryDetails`.
 - The example response includes `sessionId`, `url`, `amount`, `currency`, and `requestId`. The browser should be redirected only to the checkout `url` returned by Cashia after the server validates the response.
-- Documented headers are `X-Cashia-Key-ID`, `X-Cashia-Timestamp` (Unix seconds), `X-Cashia-Nonce` (unique random string), `X-Cashia-Signature` (HMAC-SHA256 of the signing string), `X-Cashia-Hash` (HMAC-SHA256 hash of the request body for POST/PUT/PATCH), and `Content-Type: application/json`.
-- The displayed signing-string format is `https://host + method + timestamp + nonce + keyId`, with no separators or additional characters between components. Implement this only after confirming the exact host representation (host alone versus scheme/host) and the provider's canonicalization details from its full docs or support.
-- The docs' Postman header section lists variables `key_id`, `timestamp`, `nonce`, `signature`, and `body_hash`, but that alone does not specify the exact byte-level input and output encoding for `body_hash`.
+- Every authenticated request must include `X-Cashia-Key-ID` (public API key ID), `X-Cashia-Nonce` (unique random string of at least 12 characters), `X-Cashia-Timestamp` (current Unix timestamp in seconds), `X-Cashia-Hash` (HMAC-SHA256 over the request body; for GET, the body is the empty string), and `X-Cashia-Signature` (HMAC-SHA256 over the signing string). JSON requests also use `Content-Type: application/json`.
+- The displayed signing-string format is `https://host + method + timestamp + nonce + keyId`, with no separators or additional characters between components. The exact canonical host representation (scheme/host versus host alone), method casing, secret-key encoding, and output encoding still need confirmation before implementation.
+- Cashia describes `X-Cashia-Hash` as HMAC-SHA256 over the request body (empty string for GET). Before implementation, confirm whether the body is signed as the exact raw request bytes or a canonicalized JSON string, and whether the resulting digest must be hexadecimal or another encoding. The request bytes used to compute the hash must match the bytes sent.
+- The docs' Postman header section lists variables `key_id`, `timestamp`, `nonce`, `signature`, and `body_hash`.
 
 ## Cashia transaction-status contract — documented facts
 
