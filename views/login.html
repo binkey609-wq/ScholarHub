@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Log in to ScholarHub academic materials.">
+<title>Log in | ScholarHub</title><link rel="stylesheet" href="/css/style.css">
+<style>
+.auth-wrap{min-height:100vh;display:grid;grid-template-columns:1.05fr 1fr;background:#fff}.auth-aside{padding:8%;background:linear-gradient(145deg,#2448c7,#6d84f4);color:#fff;display:flex;flex-direction:column;justify-content:center}.auth-aside h1{font-size:clamp(30px,4vw,52px);line-height:1.1;margin:20px 0}.auth-aside p{line-height:1.8;color:#e4eaff;max-width:460px}.auth-brand{font-weight:800;font-size:22px}.auth-main{display:grid;place-items:center;padding:28px}.auth-card{width:min(100%,430px)}.auth-card h2{font-size:30px;margin:0 0 8px}.auth-card>p{color:#718096;font-size:14px;line-height:1.6;margin-bottom:26px}.field{display:grid;gap:7px;margin:15px 0}.field label{font-size:12px;font-weight:700}.field input,.field select{width:100%;border:1px solid #dfe5ef;border-radius:10px;padding:13px;font:inherit;background:#fff;color:#172033}.field input:focus,.field select:focus{outline:2px solid #c8d4ff;border-color:#315bea}.auth-submit{width:100%;border:0;border-radius:10px;padding:14px;background:#315bea;color:#fff;font-weight:700;margin-top:12px}.auth-submit:disabled{opacity:.6;cursor:wait}.auth-message{font-size:13px;padding:11px;border-radius:9px;display:none;margin:14px 0}.auth-message.show{display:block}.auth-message.error{background:#fff0f0;color:#a72e36}.auth-message.success{background:#eaf9f0;color:#17643b}.auth-foot{font-size:13px;text-align:center;margin-top:20px}.auth-foot a{color:#315bea;font-weight:700;text-decoration:none}.auth-small{font-size:11px;color:#8993a5;margin-top:20px}@media(max-width:760px){.auth-wrap{grid-template-columns:1fr}.auth-aside{padding:28px;min-height:220px}.auth-aside h1{font-size:30px;margin:12px 0}.auth-aside p{margin-bottom:0}.auth-main{padding:30px 22px}}
+</style></head><body>
+<div class="auth-wrap"><aside class="auth-aside"><div class="auth-brand">🎓 ScholarHub</div><h1>Your next academic breakthrough starts here.</h1><p>Sign in to find your course materials, revision resources and important academic updates in one place.</p></aside>
+<main class="auth-main"><form class="auth-card" id="loginForm"><p class="eyebrow">WELCOME BACK</p><h2>Log in to ScholarHub</h2><p>Use the email and password associated with your account.</p>
+<div class="auth-message" id="message" role="status" aria-live="polite"></div>
+<div class="field"><label for="email">Email address</label><input id="email" name="email" type="email" autocomplete="email" required placeholder="you@example.com"></div>
+<div class="field"><label for="password">Password</label><input id="password" name="password" type="password" autocomplete="current-password" required placeholder="Enter your password"></div>
+<button class="auth-submit" type="submit">Log in securely →</button>
+<div class="auth-foot">New to ScholarHub? <a href="/signup">Create an account</a></div><div class="auth-small">Your password is securely verified by Supabase Auth.</div></form></main></div>
+<script>
+const form=document.getElementById('loginForm'),message=document.getElementById('message'),submit=form.querySelector('button');
+form.addEventListener('submit',async e=>{e.preventDefault();message.className='auth-message';message.textContent='';submit.disabled=true;submit.textContent='Signing in…';
+try{const response=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:form.email.value,password:form.password.value})});const data=await response.json();if(!response.ok)throw new Error(data.error||'Could not log in.');if(data.session)sessionStorage.setItem('scholarhub_session',JSON.stringify(data.session));if(data.user)sessionStorage.setItem('scholarhub_user',JSON.stringify(data.user));message.textContent='Login successful. Opening your dashboard…';message.className='auth-message show success';window.location.assign('/dashboard');}
+catch(err){message.textContent=err.message;message.className='auth-message show error';}
+finally{submit.disabled=false;submit.textContent='Log in securely →';}});
+</script></body></html>
