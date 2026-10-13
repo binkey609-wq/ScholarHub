@@ -113,6 +113,30 @@ app.get('/api/materials/:id/open', authenticate, async (req, res) => {
   return res.json({ url: signed.signedUrl, title: material.title });
 });
 
+app.get('/api/notifications', authenticate, async (req, res) => {
+  const { data, error } = await req.userSupabase
+    .from('notifications')
+    .select('id,title,message,created_at,target_course_id,target_year')
+    .order('created_at', { ascending: false })
+    .limit(50);
+  if (error) return res.status(500).json({ error: 'Could not load notifications.' });
+  return res.json({ notifications: data || [] });
+});
+
+app.post('/api/admin/notifications', authenticate, requireAdmin, async (req, res) => {
+  const title = String(req.body.title || '').trim();
+  const message = String(req.body.message || '').trim();
+  if (!title || !message) return res.status(400).json({ error: 'Enter both a notification title and message.' });
+  if (title.length > 180 || message.length > 5000) return res.status(400).json({ error: 'Title or message is too long.' });
+  const { data, error } = await req.userSupabase
+    .from('notifications')
+    .insert({ title, message, created_by: req.user.id })
+    .select('id,title,message,created_at')
+    .single();
+  if (error) return res.status(500).json({ error: 'Could not publish notification. Check the notifications table permissions.' });
+  return res.status(201).json({ message: 'Notification sent to students.', notification: data });
+});
+
 app.get('/api/admin/summary', authenticate, requireAdmin, async (req, res) => {
   const [profiles, materials, notifications] = await Promise.all([
     req.userSupabase.from('profiles').select('id', { count: 'exact', head: true }),
