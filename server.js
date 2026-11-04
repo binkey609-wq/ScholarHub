@@ -94,7 +94,7 @@ app.get('/api/course-combinations', authenticate, async (req, res) => {
   const { data: profile, error: profileError } = await req.userSupabase.from('profiles')
     .select('course_name,role').eq('id', req.user.id).maybeSingle();
   if (profileError) return res.status(500).json({ error: 'Could not verify your course.' });
-  const course = String(profile?.course_name || '').toLowerCase().replace(/\\s+/g, ' ').trim();
+  const course = String(profile?.course_name || '').toLowerCase().replace(/\s+/g, ' ').trim();
   if (!(course.includes('bachelor of education science') || course === 'education science')) {
     return res.json({ combinations: [] });
   }
@@ -117,7 +117,7 @@ app.post('/api/course-combinations/select', authenticate, async (req, res) => {
   const { data: profile, error: profileError } = await req.userSupabase.from('profiles')
     .select('course_name,role').eq('id', req.user.id).maybeSingle();
   if (profileError || !profile) return res.status(404).json({ error: 'Student profile not found.' });
-  const course = String(profile.course_name || '').toLowerCase().replace(/\\s+/g, ' ').trim();
+  const course = String(profile.course_name || '').toLowerCase().replace(/\s+/g, ' ').trim();
   if (!(course.includes('bachelor of education science') || course === 'education science')) {
     return res.status(403).json({ error: 'These combinations are only available to Bachelor of Education Science students.' });
   }
