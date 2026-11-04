@@ -75,9 +75,67 @@ app.post('/api/auth/login', requireSupabase, async (req, res) => {
 app.post('/api/auth/logout', (_req, res) => res.json({ message: 'Logged out.' }));
 
 app.get('/api/profile', authenticate, async (req, res) => {
-  const { data, error } = await req.userSupabase.from('profiles').select('id,full_name,email,phone,profile_image,course_id,course_name,year_of_study,combination_id,role,created_at').eq('id', req.user.id).maybeSingle();
+  const { data, error } = await req.userSupabase.from('profiles')
+    .select('id,full_name,email,phone,profile_image,course_id,course_name,year_of_study,combination_id,role,created_at,combination:combinations(name)')
+    .eq('id', req.user.id).maybeSingle();
   if (error) return res.status(500).json({ error: 'Could not load profile. Make sure supabase/schema.sql has been run.' });
-  return res.json({ profile: data, user: { id: req.user.id, email: req.user.email } });
+  const profile = data ? { ...data, combination_name: data.combination?.name || null } : null;
+  return res.json({ profile, user: { id: req.user.id, email: req.user.email } });
+});
+
+const EDUCATION_SCIENCE_COURSE = 'Bachelor of Education Science';
+const EDUCATION_SCIENCE_COMBINATIONS = ['Math/Chem', 'Math/Physics', 'Math/Bio', 'Bio/Chem', 'Chem/Physics'];
+async function getEducationScienceCourseId(client) {
+  const { data, error } = await client.from('courses').select('id').eq('name', EDUCATION_SCIENCE_COURSE).maybeSingle();
+  if (error) throw error;
+  return data?.id || null;
+}
+app.get('/api/course-combinations', authenticate, async (req, res) => {
+  const { data: profile, error: profileError } = await req.userSupabase.from('profiles')
+    .select('course_name,role').eq('id', req.user.id).maybeSingle();
+  if (profileError) return res.status(500).json({ error: 'Could not verify your course.' });
+  const course = String(profile?.course_name || '').toLowerCase().replace(/\\s+/g, ' ').trim();
+  if (!(course.includes('bachelor of education science') || course === 'education science')) {
+    return res.json({ combinations: [] });
+  }
+  try {
+    const courseId = await getEducationScienceCourseId(req.userSupabase);
+    if (!courseId) return res.status(503).json({ error: 'Course combinations are not set up yet. Run the course-combinations migration in Supabase.' });
+    const { data, error } = await req.userSupabase.from('combinations').select('id,name')
+      .eq('course_id', courseId).order('name');
+    if (error) return res.status(500).json({ error: 'Could not load course combinations.' });
+    return res.json({ combinations: (data || []).filter(item => EDUCATION_SCIENCE_COMBINATIONS.includes(item.name)) });
+  } catch (_error) {
+    return res.status(500).json({ error: 'Could not load course combinations.' });
+  }
+});
+app.post('/api/course-combinations/select', authenticate, async (req, res) => {
+  const combinationName = String(req.body?.combination_name || '').trim();
+  if (!EDUCATION_SCIENCE_COMBINATIONS.includes(combinationName)) {
+    return res.status(400).json({ error: 'Choose one of the listed Bachelor of Education Science combinations.' });
+  }
+  const { data: profile, error: profileError } = await req.userSupabase.from('profiles')
+    .select('course_name,role').eq('id', req.user.id).maybeSingle();
+  if (profileError || !profile) return res.status(404).json({ error: 'Student profile not found.' });
+  const course = String(profile.course_name || '').toLowerCase().replace(/\\s+/g, ' ').trim();
+  if (!(course.includes('bachelor of education science') || course === 'education science')) {
+    return res.status(403).json({ error: 'These combinations are only available to Bachelor of Education Science students.' });
+  }
+  try {
+    const courseId = await getEducationScienceCourseId(req.userSupabase);
+    if (!courseId) return res.status(503).json({ error: 'Course combinations are not set up yet. Run the course-combinations migration in Supabase.' });
+    const { data: combination, error: combinationError } = await req.userSupabase.from('combinations')
+      .select('id,name').eq('course_id', courseId).eq('name', combinationName).maybeSingle();
+    if (combinationError) return res.status(500).json({ error: 'Could not verify that combination.' });
+    if (!combination) return res.status(400).json({ error: 'That combination is not available.' });
+    const { data: updated, error: updateError } = await req.userSupabase.from('profiles')
+      .update({ combination_id: combination.id, updated_at: new Date().toISOString() })
+      .eq('id', req.user.id).select('id,combination_id').single();
+    if (updateError) return res.status(500).json({ error: 'Could not save your combination. Please try again.' });
+    return res.json({ message: 'Your course combination has been saved.', profile: { ...updated, combination_name: combination.name } });
+  } catch (_error) {
+    return res.status(500).json({ error: 'Could not save your course combination.' });
+  }
 });
 app.get('/api/materials', authenticate, async (req, res) => {
   const { data, error } = await req.userSupabase.from('materials').select('id,title,description,unit_id,file_path,is_paid,created_at').order('created_at', { ascending: false }).limit(100);
