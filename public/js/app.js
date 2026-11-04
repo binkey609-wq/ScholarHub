@@ -108,7 +108,7 @@ async function renderSection(section) {
     shell(titles.units,`<div class="section-heading"><p class="eyebrow">LEARNING RESOURCES</p><h2>Units & lecture materials</h2></div><section class="panel"><p>Latest lecture notes and revision resources published by the ScholarHub administrator.</p><div class="material-list">${materials.length?materials.map(materialCard).join(''):'<p>No materials are available yet.</p>'}</div></section>`);
   } else if (section === 'combination') {
     const courseName = profile?.course_name || user?.user_metadata?.course || 'Not set';
-    const normalizedCourse = String(courseName).toLowerCase().replace(/\\s+/g, ' ').trim();
+    const normalizedCourse = String(courseName).toLowerCase().replace(/\s+/g, ' ').trim();
     const isEducationScience = normalizedCourse.includes('bachelor of education science') || normalizedCourse === 'education science';
     if (!isEducationScience) {
       shell(titles.combination,`<div class="section-heading"><p class="eyebrow">YOUR PROGRAMME</p><h2>Course Combination</h2></div><section class="panel"><p>Combination options will be shown here according to your enrolled course.</p></section>`);
