@@ -107,7 +107,21 @@ async function renderSection(section) {
     let materials=[]; try { materials=await loadMaterials(); } catch(e) { showToast(e.message); }
     shell(titles.units,`<div class="section-heading"><p class="eyebrow">LEARNING RESOURCES</p><h2>Units & lecture materials</h2></div><section class="panel"><p>Latest lecture notes and revision resources published by the ScholarHub administrator.</p><div class="material-list">${materials.length?materials.map(materialCard).join(''):'<p>No materials are available yet.</p>'}</div></section>`);
   } else if (section === 'combination') {
-    shell(titles.combination,`<div class="section-heading"><p class="eyebrow">YOUR PROGRAMME</p><h2>Course Combination</h2></div><section class="panel"><h3>${esc(profile?.combination_name||'No combination selected')}</h3><p>Course: ${esc(profile?.course_name||user?.user_metadata?.course||'Not set')}</p><p>Combination details will appear here once configured by the administrator.</p></section>`);
+    const courseName = profile?.course_name || user?.user_metadata?.course || 'Not set';
+    const normalizedCourse = String(courseName).toLowerCase().replace(/\s+/g, ' ').trim();
+    const isEducationScience = normalizedCourse.includes('bachelor of education science') || normalizedCourse === 'education science';
+    if (!isEducationScience) {
+      shell(titles.combination,`<div class="section-heading"><p class="eyebrow">YOUR PROGRAMME</p><h2>Course Combination</h2></div><section class="panel"><p>Combination options will be shown here according to your enrolled course.</p></section>`);
+      return;
+    }
+    try {
+      const result = await api('/api/course-combinations');
+      const selected = profile?.combination_name || '';
+      const cards = (result.combinations || []).map((item,index)=>'<article class="stat-card" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;border:'+(selected===item.name?'2px solid #2563eb':'1px solid var(--border, #e2e8f0)')+'"><span class="stat-icon">📘</span><div style="flex:1;min-width:100px"><small>Combination '+(index+1)+'</small><strong>'+esc(item.name)+'</strong></div><button type="button" class="'+(selected===item.name?'primary-btn':'outline-btn')+'" data-select-combination="'+esc(item.name)+'" '+(selected===item.name?'disabled':'')+'>'+(selected===item.name?'Selected':'Choose')+'</button></article>').join('');
+      shell(titles.combination,`<div class="section-heading"><p class="eyebrow">YOUR PROGRAMME</p><h2>Course Combination</h2></div><section class="panel"><h3>${esc(selected || 'Choose your combination')}</h3><p>Course: ${esc(courseName)}</p><p>Select one combination. Your choice will be saved to your student profile.</p><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-top:18px">${cards || '<p>No combinations are configured yet.</p>'}</div></section>`);
+    } catch (error) {
+      shell(titles.combination,`<div class="section-heading"><p class="eyebrow">YOUR PROGRAMME</p><h2>Course Combination</h2></div><section class="panel"><p>${esc(error.message)}</p></section>`);
+    }
   } else if (section === 'packages') {
     renderPackages();
   } else if (section === 'settings') {
@@ -142,6 +156,28 @@ document.addEventListener('click', event => {
   if (event.target.closest('[data-back-packages]')) renderPackages();
 });
 appRoot.addEventListener('click', async event => {
+  const choice = event.target.closest('[data-select-combination]');
+  if (choice) {
+    const combinationName = choice.dataset.selectCombination;
+    choice.disabled = true;
+    const previousLabel = choice.textContent;
+    choice.textContent = 'Saving…';
+    try {
+      const result = await api('/api/course-combinations/select', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ combination_name: combinationName })
+      });
+      profile = { ...(profile || {}), ...result.profile };
+      showToast(result.message || 'Combination saved.');
+      await renderSection('combination');
+    } catch (error) {
+      choice.disabled = false;
+      choice.textContent = previousLabel;
+      showToast(error.message);
+    }
+    return;
+  }
   const openButton = event.target.closest('[data-open-material]');
   if (!openButton) return;
   const newTab = window.open('about:blank', '_blank');
