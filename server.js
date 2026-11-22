@@ -53,7 +53,7 @@ app.get('/admin', (_req, res) => res.sendFile(path.join(__dirname, 'views', 'adm
 app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'ScholarHub' }));
 
 app.post('/api/auth/signup', requireSupabase, async (req, res) => {
-  const { fullName, email, password, yearOfStudy, course } = req.body || {};
+  const { fullName, email, password, yearOfStudy, course, referralCode } = req.body || {};
   if (!fullName || !email || !password || !yearOfStudy || !course) return res.status(400).json({ error: 'Please complete all required fields.' });
   if (String(password).length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters.' });
   const normalizedEmail = String(email).trim().toLowerCase();
@@ -63,7 +63,7 @@ app.post('/api/auth/signup', requireSupabase, async (req, res) => {
   });
   if (error) return res.status(400).json({ error: error.message });
   if (!data.session) return res.status(200).json({ message: 'Account created. Check your email to confirm your account, then log in.' });
-  return res.status(201).json({ message: 'Account created successfully.', session: data.session, user: data.user });
+  if (referralCode && data.user?.id) { const code=String(referralCode).trim().toUpperCase(); const { data: referrer }=await supabase.from('profiles').select('id').eq('referral_code',code).maybeSingle(); if(referrer && referrer.id!==data.user.id) await supabase.from('referrals').insert({referrer_id:referrer.id,referred_user_id:data.user.id}); }\n  return res.status(201).json({ message: 'Account created successfully.', session: data.session, user: data.user });
 });
 app.post('/api/auth/login', requireSupabase, async (req, res) => {
   const { email, password } = req.body || {};
