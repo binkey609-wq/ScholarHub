@@ -8,7 +8,7 @@ const toast = document.getElementById('toast');
 const sidebar = document.getElementById('sidebar');
 const pageTitle = document.getElementById('pageTitle');
 const appRoot = document.getElementById('app');
-const titles = {home:'Welcome back 👋',profile:'My Profile',year:'Year of Study',units:'My Units',combination:'Course Combination',packages:'Packages',settings:'Settings'};
+const titles = {home:'Welcome back 👋',profile:'My Profile',year:'Year of Study',units:'My Units',combination:'Course Combination',packages:'Packages',referrals:'Refer a Friend',settings:'Settings'};
 let profile = null;
 const themeKey = 'scholarhub_theme';
 const compactKey = 'scholarhub_compact';
@@ -67,7 +67,7 @@ async function renderNotifications() {
   try {
     const result = await api('/api/notifications');
     const items = result.notifications || [];
-    shell('Notifications', `<div class="section-heading"><p class="eyebrow">STUDENT UPDATES</p><h2>Notifications & announcements</h2></div><section class="panel"><div class="notification-list">${items.length ? items.map(n=>'<article class="notification"><span>📢</span><div><strong>'+esc(n.title)+'</strong><p>'+esc(n.message)+'</p><small>'+new Date(n.created_at).toLocaleString()+'</small></div></article>').join('') : '<p>No notifications yet. New announcements from your administrator will appear here.</p>'}</div></section>`);
+    shell('Notifications', `<div class="section-heading"><p class="eyebrow">STUDENT UPDATES</p><h2>Notifications & announcements</h2></div><section class="panel"><div class="notification-list">${items.length ? items.map(n=>'<article class="notification"><span>📢</span><div><strong>'+esc(n.title)+'</strong><p>'+esc(n.message)+'</p><small>'+new Date(n.created_at).toLocaleString()+'</small></div></article>').join('') : '<p>No notifications yet. New announcements from your administrator will appear here.</p>'}</div></section>`); await api('/api/notifications/read-all',{method:'POST'}); const b=document.querySelector('#notificationBtn .badge'); if(b)b.style.display='none';
   } catch (error) { showToast(error.message); }
 }
 async function loadHomeNotifications() {
@@ -78,7 +78,7 @@ async function loadHomeNotifications() {
     const items = result.notifications || [];
     preview.innerHTML = items.length ? items.slice(0,3).map(n=>'<article class="notification"><span>📢</span><div><strong>'+esc(n.title)+'</strong><p>'+esc(n.message)+'</p><small>'+new Date(n.created_at).toLocaleDateString()+'</small></div></article>').join('') : '<p>No new notices yet.</p>';
     const badge = document.querySelector('#notificationBtn .badge');
-    if (badge) { badge.textContent = items.length; badge.style.display = items.length ? 'grid' : 'none'; }
+    if (badge) { badge.textContent = result.unread_count || 0; badge.style.display = result.unread_count ? 'grid' : 'none'; }
   } catch (error) { preview.innerHTML = '<p>Notifications could not be loaded.</p>'; }
 }
 const packageOptions = [
@@ -107,10 +107,24 @@ async function renderSection(section) {
     let materials=[]; try { materials=await loadMaterials(); } catch(e) { showToast(e.message); }
     shell(titles.units,`<div class="section-heading"><p class="eyebrow">LEARNING RESOURCES</p><h2>Units & lecture materials</h2></div><section class="panel"><p>Latest lecture notes and revision resources published by the ScholarHub administrator.</p><div class="material-list">${materials.length?materials.map(materialCard).join(''):'<p>No materials are available yet.</p>'}</div></section>`);
   } else if (section === 'combination') {
-    shell(titles.combination,`<div class="section-heading"><p class="eyebrow">YOUR PROGRAMME</p><h2>Course Combination</h2></div><section class="panel"><h3>${esc(profile?.combination_name||'No combination selected')}</h3><p>Course: ${esc(profile?.course_name||user?.user_metadata?.course||'Not set')}</p><p>Combination details will appear here once configured by the administrator.</p></section>`);
+    const courseName = profile?.course_name || user?.user_metadata?.course || 'Not set';
+    const normalizedCourse = String(courseName).toLowerCase().replace(/\s+/g, ' ').trim();
+    const isEducationScience = normalizedCourse.includes('bachelor of education science') || normalizedCourse === 'education science';
+    if (!isEducationScience) {
+      shell(titles.combination,`<div class="section-heading"><p class="eyebrow">YOUR PROGRAMME</p><h2>Course Combination</h2></div><section class="panel"><p>Combination options will be shown here according to your enrolled course.</p></section>`);
+      return;
+    }
+    try {
+      const result = await api('/api/course-combinations');
+      const selected = profile?.combination_name || '';
+      const cards = (result.combinations || []).map((item,index)=>'<article class="stat-card" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;border:'+(selected===item.name?'2px solid #2563eb':'1px solid var(--border, #e2e8f0)')+'"><span class="stat-icon">📘</span><div style="flex:1;min-width:100px"><small>Combination '+(index+1)+'</small><strong>'+esc(item.name)+'</strong></div><button type="button" class="'+(selected===item.name?'primary-btn':'outline-btn')+'" data-select-combination="'+esc(item.name)+'" '+(selected===item.name?'disabled':'')+'>'+(selected===item.name?'Selected':'Choose')+'</button></article>').join('');
+      shell(titles.combination,`<div class="section-heading"><p class="eyebrow">YOUR PROGRAMME</p><h2>Course Combination</h2></div><section class="panel"><h3>${esc(selected || 'Choose your combination')}</h3><p>Course: ${esc(courseName)}</p><p>Select one combination. Your choice will be saved to your student profile.</p><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-top:18px">${cards || '<p>No combinations are configured yet.</p>'}</div></section>`);
+    } catch (error) {
+      shell(titles.combination,`<div class="section-heading"><p class="eyebrow">YOUR PROGRAMME</p><h2>Course Combination</h2></div><section class="panel"><p>${esc(error.message)}</p></section>`);
+    }
   } else if (section === 'packages') {
     renderPackages();
-  } else if (section === 'settings') {
+  } else if (section === 'referrals') {\n    try { const r=await api('/api/referrals'); const link=r.referral_link; shell(titles.referrals, `<div class="section-heading"><p class="eyebrow">ACADEMIC COMMUNITY</p><h2>Refer a Friend</h2><p>Invite classmates to join ScholarHub.</p></div><section class="panel"><h3>Share your referral link</h3><div style="display:flex;gap:8px;flex-wrap:wrap"><input id="refLink" readonly value="${esc(link)}" style="flex:1;min-width:180px;padding:10px"><button class="primary-btn" id="copyRef">Copy</button></div><p>Your code: <strong>${esc(r.referral_code)}</strong></p><div class="stats-grid"><article class="stat-card"><div><small>Invited</small><strong>${r.total_referred}</strong></div></article><article class="stat-card"><div><small>Joined</small><strong>${r.joined_count}</strong></div></article></div><p>No bonuses or rewards—academic sharing only.</p></section>`); document.getElementById('copyRef')?.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(link);showToast('Copied!')}catch{const el=document.getElementById('refLink');el.select();document.execCommand('copy');showToast('Copied!')}}); } catch(e){shell(titles.referrals,`<section class="panel"><p>${esc(e.message)}</p></section>`);}\n  } else if (section === 'settings') {
     shell(titles.settings,`<div class="section-heading"><p class="eyebrow">PREFERENCES</p><h2>Settings</h2></div><section class="panel settings-panel"><h3>Appearance</h3><div class="setting-row"><div><strong>Day / night mode</strong><p>Choose light or dark appearance.</p></div><button class="outline-btn" id="themeToggle" type="button">${document.body.classList.contains('dark-mode')?'Switch to day mode':'Switch to night mode'}</button></div><div class="setting-row"><div><strong>Compact layout</strong><p>Reduce spacing to fit more content on screen.</p></div><button class="outline-btn" id="compactToggle" type="button">${document.body.classList.contains('compact-mode')?'Turn off compact layout':'Turn on compact layout'}</button></div><div class="setting-row"><div><strong>Account</strong><p>${esc(user?.email||'')}</p></div><button class="outline-btn" id="settingsLogout" type="button">Log out</button></div><p style="font-size:12px;color:#718096">Your appearance preferences are saved on this device.</p></section>`);
     document.getElementById('themeToggle')?.addEventListener('click',()=>{const dark=!document.body.classList.contains('dark-mode');localStorage.setItem(themeKey,dark?'dark':'light');applyPreferences();renderSection('settings');});
     document.getElementById('compactToggle')?.addEventListener('click',()=>{const compact=!document.body.classList.contains('compact-mode');localStorage.setItem(compactKey,compact?'yes':'no');applyPreferences();renderSection('settings');});
@@ -142,6 +156,28 @@ document.addEventListener('click', event => {
   if (event.target.closest('[data-back-packages]')) renderPackages();
 });
 appRoot.addEventListener('click', async event => {
+  const choice = event.target.closest('[data-select-combination]');
+  if (choice) {
+    const combinationName = choice.dataset.selectCombination;
+    choice.disabled = true;
+    const previousLabel = choice.textContent;
+    choice.textContent = 'Saving…';
+    try {
+      const result = await api('/api/course-combinations/select', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ combination_name: combinationName })
+      });
+      profile = { ...(profile || {}), ...result.profile };
+      showToast(result.message || 'Combination saved.');
+      await renderSection('combination');
+    } catch (error) {
+      choice.disabled = false;
+      choice.textContent = previousLabel;
+      showToast(error.message);
+    }
+    return;
+  }
   const openButton = event.target.closest('[data-open-material]');
   if (!openButton) return;
   const newTab = window.open('about:blank', '_blank');
