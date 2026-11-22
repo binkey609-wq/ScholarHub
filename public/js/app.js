@@ -67,7 +67,7 @@ async function renderNotifications() {
   try {
     const result = await api('/api/notifications');
     const items = result.notifications || [];
-    shell('Notifications', `<div class="section-heading"><p class="eyebrow">STUDENT UPDATES</p><h2>Notifications & announcements</h2></div><section class="panel"><div class="notification-list">${items.length ? items.map(n=>'<article class="notification"><span>📢</span><div><strong>'+esc(n.title)+'</strong><p>'+esc(n.message)+'</p><small>'+new Date(n.created_at).toLocaleString()+'</small></div></article>').join('') : '<p>No notifications yet. New announcements from your administrator will appear here.</p>'}</div></section>`);
+    shell('Notifications', `<div class="section-heading"><p class="eyebrow">STUDENT UPDATES</p><h2>Notifications & announcements</h2></div><section class="panel"><div class="notification-list">${items.length ? items.map(n=>'<article class="notification"><span>📢</span><div><strong>'+esc(n.title)+'</strong><p>'+esc(n.message)+'</p><small>'+new Date(n.created_at).toLocaleString()+'</small></div></article>').join('') : '<p>No notifications yet. New announcements from your administrator will appear here.</p>'}</div></section>`); await api('/api/notifications/read-all',{method:'POST'}); const b=document.querySelector('#notificationBtn .badge'); if(b)b.style.display='none';
   } catch (error) { showToast(error.message); }
 }
 async function loadHomeNotifications() {
@@ -78,7 +78,7 @@ async function loadHomeNotifications() {
     const items = result.notifications || [];
     preview.innerHTML = items.length ? items.slice(0,3).map(n=>'<article class="notification"><span>📢</span><div><strong>'+esc(n.title)+'</strong><p>'+esc(n.message)+'</p><small>'+new Date(n.created_at).toLocaleDateString()+'</small></div></article>').join('') : '<p>No new notices yet.</p>';
     const badge = document.querySelector('#notificationBtn .badge');
-    if (badge) { badge.textContent = items.length; badge.style.display = items.length ? 'grid' : 'none'; }
+    if (badge) { badge.textContent = result.unread_count || 0; badge.style.display = result.unread_count ? 'grid' : 'none'; }
   } catch (error) { preview.innerHTML = '<p>Notifications could not be loaded.</p>'; }
 }
 const packageOptions = [
@@ -124,7 +124,7 @@ async function renderSection(section) {
     }
   } else if (section === 'packages') {
     renderPackages();
-  } else if (section === 'settings') {
+  } else if (section === 'referrals') {\n    try { const r=await api('/api/referrals'); const link=r.referral_link; shell(titles.referrals, `<div class="section-heading"><p class="eyebrow">ACADEMIC COMMUNITY</p><h2>Refer a Friend</h2><p>Invite classmates to join ScholarHub.</p></div><section class="panel"><h3>Share your referral link</h3><div style="display:flex;gap:8px;flex-wrap:wrap"><input id="refLink" readonly value="${esc(link)}" style="flex:1;min-width:180px;padding:10px"><button class="primary-btn" id="copyRef">Copy</button></div><p>Your code: <strong>${esc(r.referral_code)}</strong></p><div class="stats-grid"><article class="stat-card"><div><small>Invited</small><strong>${r.total_referred}</strong></div></article><article class="stat-card"><div><small>Joined</small><strong>${r.joined_count}</strong></div></article></div><p>No bonuses or rewards—academic sharing only.</p></section>`); document.getElementById('copyRef')?.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(link);showToast('Copied!')}catch{const el=document.getElementById('refLink');el.select();document.execCommand('copy');showToast('Copied!')}}); } catch(e){shell(titles.referrals,`<section class="panel"><p>${esc(e.message)}</p></section>`);}\n  } else if (section === 'settings') {
     shell(titles.settings,`<div class="section-heading"><p class="eyebrow">PREFERENCES</p><h2>Settings</h2></div><section class="panel settings-panel"><h3>Appearance</h3><div class="setting-row"><div><strong>Day / night mode</strong><p>Choose light or dark appearance.</p></div><button class="outline-btn" id="themeToggle" type="button">${document.body.classList.contains('dark-mode')?'Switch to day mode':'Switch to night mode'}</button></div><div class="setting-row"><div><strong>Compact layout</strong><p>Reduce spacing to fit more content on screen.</p></div><button class="outline-btn" id="compactToggle" type="button">${document.body.classList.contains('compact-mode')?'Turn off compact layout':'Turn on compact layout'}</button></div><div class="setting-row"><div><strong>Account</strong><p>${esc(user?.email||'')}</p></div><button class="outline-btn" id="settingsLogout" type="button">Log out</button></div><p style="font-size:12px;color:#718096">Your appearance preferences are saved on this device.</p></section>`);
     document.getElementById('themeToggle')?.addEventListener('click',()=>{const dark=!document.body.classList.contains('dark-mode');localStorage.setItem(themeKey,dark?'dark':'light');applyPreferences();renderSection('settings');});
     document.getElementById('compactToggle')?.addEventListener('click',()=>{const compact=!document.body.classList.contains('compact-mode');localStorage.setItem(compactKey,compact?'yes':'no');applyPreferences();renderSection('settings');});
