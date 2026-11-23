@@ -59,7 +59,7 @@ app.post('/api/auth/signup', requireSupabase, async (req, res) => {
   const normalizedEmail = String(email).trim().toLowerCase();
   const { data, error } = await supabase.auth.signUp({
     email: normalizedEmail, password: String(password),
-    options: { emailRedirectTo: String(process.env.APP_URL || 'https://scholarhub-kofc.onrender.com').replace(/\\/$/, '') + '/login', data: { full_name: String(fullName).trim(), year_of_study: String(yearOfStudy), course: String(course).trim() } }
+    options: { emailRedirectTo: String(process.env.APP_URL || 'https://scholarhub-kofc.onrender.com').replace(/\/$/, '') + '/login', data: { full_name: String(fullName).trim(), year_of_study: String(yearOfStudy), course: String(course).trim() } }
   });
   if (error) return res.status(400).json({ error: error.message });
   if (!data.session) return res.status(200).json({ message: 'Account created. Check your email to confirm your account, then log in.' });
@@ -174,7 +174,7 @@ app.get('/api/materials/:id/open', authenticate, async (req, res) => {
 
 app.get('/api/referrals', authenticate, async (req, res) => {
   const referralCode = 'SH' + String(req.user.id).replace(/-/g, '').slice(0, 10).toUpperCase();
-  const baseUrl = String(process.env.APP_URL || 'https://scholarhub-kofc.onrender.com').replace(/\\/$/, '');
+  const baseUrl = String(process.env.APP_URL || 'https://scholarhub-kofc.onrender.com').replace(/\/$/, '');
   const referralLink = baseUrl + '/signup?ref=' + encodeURIComponent(referralCode);
   let totalReferred = 0;
   try {
