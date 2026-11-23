@@ -59,7 +59,7 @@ app.post('/api/auth/signup', requireSupabase, async (req, res) => {
   const normalizedEmail = String(email).trim().toLowerCase();
   const { data, error } = await supabase.auth.signUp({
     email: normalizedEmail, password: String(password),
-    options: { data: { full_name: String(fullName).trim(), year_of_study: String(yearOfStudy), course: String(course).trim() } }
+    options: { emailRedirectTo: String(process.env.APP_URL || 'https://scholarhub-kofc.onrender.com').replace(/\\/$/, '') + '/login', data: { full_name: String(fullName).trim(), year_of_study: String(yearOfStudy), course: String(course).trim() } }
   });
   if (error) return res.status(400).json({ error: error.message });
   if (!data.session) return res.status(200).json({ message: 'Account created. Check your email to confirm your account, then log in.' });
@@ -170,6 +170,18 @@ app.get('/api/materials/:id/open', authenticate, async (req, res) => {
     .createSignedUrl(material.file_path, 300);
   if (storageError || !signed?.signedUrl) return res.status(500).json({ error: 'Could not open this file. Ask the administrator to check its upload.' });
   return res.json({ url: signed.signedUrl, title: material.title });
+});
+
+app.get('/api/referrals', authenticate, async (req, res) => {
+  const referralCode = 'SH' + String(req.user.id).replace(/-/g, '').slice(0, 10).toUpperCase();
+  const baseUrl = String(process.env.APP_URL || 'https://scholarhub-kofc.onrender.com').replace(/\\/$/, '');
+  const referralLink = baseUrl + '/signup?ref=' + encodeURIComponent(referralCode);
+  let totalReferred = 0;
+  try {
+    const { count, error } = await req.userSupabase.from('referrals').select('id', { count: 'exact', head: true }).eq('referrer_id', req.user.id);
+    if (!error) totalReferred = count || 0;
+  } catch (_) {}
+  return res.json({ referral_code: referralCode, referral_link: referralLink, total_referred: totalReferred, joined_count: totalReferred });
 });
 
 app.get('/api/notifications', authenticate, async (req, res) => {
