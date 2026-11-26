@@ -70,7 +70,7 @@ app.post('/api/auth/login', requireSupabase, async (req, res) => {
   const { email, password } = req.body || {};
   if (!email || !password) return res.status(400).json({ error: 'Enter your email and password.' });
   const { data, error } = await supabase.auth.signInWithPassword({ email: String(email).trim().toLowerCase(), password: String(password) });
-  if (error) return res.status(401).json({ error: 'Invalid email or password, or your email has not been confirmed.' });
+  if (error) { console.error('ScholarHub login failed:', error.message, error.code); return res.status(401).json({ error: error.message, code: error.code || null }); }
   return res.json({ message: 'Logged in successfully.', session: data.session, user: data.user });
 });
 app.post('/api/auth/logout', (_req, res) => res.json({ message: 'Logged out.' }));
